@@ -1,0 +1,66 @@
+MODULE MainModule
+
+	CONST robtarget Pick_target:=[[-18.16,-791.23,766.70],[0.847293,0.0278708,-0.00170491,-0.530391],[-2,0,-1,1],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+	CONST robtarget Place_target:=[[17.22,-455.15,756.11],[0.995917,0.0224285,0.0270788,-0.0831465],[-1,0,-1,1],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+	CONST robtarget Home :=[[-564.28,76.46,837.02],[0.506659,-0.487527,0.514093,0.491246],[0,-1,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+	VAR robtarget Coin;
+	VAR robtarget Deposit;
+	VAR socketdev server_socket;
+	VAR socketdev client_socket;
+	VAR socketdev conf_socket;
+	VAR string client_ip;
+	VAR num process;
+	VAR string PRB;
+	VAR string COB;
+	VAR pos coinL;
+	VAR bool ok;
+  	 
+	PROC main()
+    	coinL := [0,0,0];
+    	SocketCreate server_socket;
+    	SocketBind server_socket, "130.230.141.123", 1025;
+    	SocketListen server_socket;
+    	WHILE TRUE DO
+        	SocketAccept server_socket, client_socket \ClientAddress:=client_ip;
+        	SocketReceive client_socket \Str:=PRB;
+        	SocketSend client_socket \Str:=PRB;
+        	ok := StrToVal(PRB, process);
+        	SocketReceive client_socket \Str:=COB;
+        	SocketSend client_socket \Str:=COB;
+        	ok := StrToVal(COB, coinL);
+        	IF process = 1 THEN
+            	Coin := offs(Pick_target,-coinL.x, -coinL.y, 0);
+            	Pick;           	 
+        	ENDIF
+        	IF process = 2 THEN
+            	Deposit := offs(Place_target,-coinL.x, -coinL.y, 0);  
+            	Extract;
+        	ENDIF
+        	SocketSend client_socket \Str:="Done";
+        	SocketClose client_socket;
+    	ENDWHILE
+    	ERROR
+        	IF ERRNO=ERR_SOCK_TIMEOUT THEN
+            	RETRY;
+        	ENDIF
+        	IF ERRNO=ERR_SOCK_CLOSED THEN
+            	SocketCreate server_socket;
+            	SocketBind server_socket, "130.230.141.123", 1025;
+            	SocketListen server_socket;
+        	ENDIF
+	ENDPROC
+    
+    
+	PROC HomePosition()
+    	MoveAbsJ [[0,0,0,0,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]]\NoEOffs,v1000,z50,tool0;
+	ENDPROC
+    
+	PROC Extract()
+    	MoveL RelTool(Coin, 0, 0, -50), v50, fine, tool0;
+    	MoveJ Deposit,v400,fine,tool0;
+	ENDPROC
+	PROC Pick()
+    	MoveJ offs(coin,0,0, -50),v400,fine,tool0;
+    	MoveL Coin,v50,fine,tool0;
+	ENDPROC
+ENDMODULE
